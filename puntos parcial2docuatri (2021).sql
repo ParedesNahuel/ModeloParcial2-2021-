@@ -1,7 +1,7 @@
---1 Hacer un trigger que al cargar un crédito verifique que el importe del mismo sumado a los importes
--- de los créditos que actualmente solicitó esa persona no supere al triple de la declaración de
--- ganancias. Sólo deben tenerse en cuenta en la sumatoria los créditos que no se encuentren 
---cancelados. De no poder otorgar el crédito aclararlo con un mensaje.
+--1 Hacer un trigger que al cargar un crÃ©dito verifique que el importe del mismo sumado a los importes
+-- de los crÃ©ditos que actualmente solicitÃ³ esa persona no supere al triple de la declaraciÃ³n de
+-- ganancias. SÃ³lo deben tenerse en cuenta en la sumatoria los crÃ©ditos que no se encuentren 
+--cancelados. De no poder otorgar el crÃ©dito aclararlo con un mensaje.
 
 CREATE TRIGGER TR_AutorizarCredito ON creditos
 INSTEAD OF INSERT
@@ -9,6 +9,21 @@ AS
 BEGIN
 	DECLARE @ImporteT money
 	DECLARE @IDDNI VARCHAR
+	
+	DECLARE @ID BIGINT
+	DECLARE @IDBANCO INT
+	DECLARE @FECHA DATE
+	DECLARE @PLAZO SMALLINT
+	DECLARE @CANCELADO BIT
+	DECLARE @IMPORTE MONEY
+
+	SELECT @ID = ID FROM inserted
+	SELECT @IDBANCO = IDBANCO FROM inserted
+	SELECT @FECHA = Fecha FROM inserted
+	SELECT @PLAZO = Plazo FROM inserted
+	SELECT @CANCELADO = @CANCELADO FROM inserted
+	SELECT @Importe = Importe FROM inserted
+	
 
 	SELECT @IDDNI = DNI FROM inserted
 	--sumar creditos pedidos. Solo los no cancelados
@@ -25,10 +40,14 @@ BEGIN
 		 PRINT 'NO SE PUEDE REALIZAR SOLICITUD YA QUE SUPERA EL MAX DE CREDITO DISPONIBLE'
 		 ROLLBACK
 		END
+
+	--hacer insert
+	INSERT INTO CREDITOS(id,idbanco,dni,fecha,importe,plazo,cancelado)
+	values (@ID,@IDBANCO,@IDDNI,@FECHA,@Importe, @IMPORTE,@plazo,@cancelado)
 END
 GO
 
---2 Hacer un trigger que al eliminar un crédito realice la cancelación del mismo.
+--2 Hacer un trigger que al eliminar un crÃ©dito realice la cancelaciÃ³n del mismo.
 
 CREATE TRIGGER TR_EliminarCredito ON Creditos
 INSTEAD OF DELETE
@@ -42,8 +61,8 @@ UPDATE Creditos SET Cancelado=1 WHERE @IDCredito=ID
 
 END
 GO
---3 Hacer un trigger que no permita otorgar créditos con un plazo de 20 o más años a personas cuya
--- declaración de ganancias sea menor al promedio de declaración de ganancias.
+--3 Hacer un trigger que no permita otorgar crÃ©ditos con un plazo de 20 o mÃ¡s aÃ±os a personas cuya
+-- declaraciÃ³n de ganancias sea menor al promedio de declaraciÃ³n de ganancias.
 
 CREATE TRIGGER TR_OtorgarCredito20Anios ON Creditos
 INSTEAD OF INSERT
@@ -54,30 +73,41 @@ DECLARE @PROMEDIO MONEY
 
 SELECT @PROMEDIO= AVG(DeclaracionGanancias) FROM Personas
 
---FIJAR DE QUE EL PLAZO DEL CREDITO NO SEA MAYOR A 20 AÑOS
-DECLARE @IDDNI VARCHAR
+--FIJAR DE QUE EL PLAZO DEL CREDITO NO SEA MAYOR A 20 AÃ‘OS
 
-SELECT @IDDNI = DNI FROM inserted
+	DECLARE @ID BIGINT
+	DECLARE @IDBANCO INT
+	DECLARE @FECHA DATE
+	DECLARE @PLAZO SMALLINT
+	DECLARE @CANCELADO BIT
+	DECLARE @IMPORTE MONEY
+	DECLARE @IDDNI VARCHAR
+	SELECT @ID = ID FROM inserted
+	SELECT @IDBANCO = IDBANCO FROM inserted
+	SELECT @FECHA = Fecha FROM inserted
+	SELECT @PLAZO = Plazo FROM inserted
+	SELECT @CANCELADO = @CANCELADO FROM inserted
+	SELECT @Importe = Importe FROM inserted
+	SELECT @IDDNI = DNI FROM inserted
 
 DECLARE @GANANCIAS MONEY
-DECLARE @PLAZO SMALLINT
 
 SELECT @GANANCIAS = DeclaracionGanancias FROM PERSONAS
 WHERE @IDDNI= DNI
 
-SELECT @PLAZO= PLAZO FROM INSERTED
-WHERE @IDDNI= DNI
-
 IF @GANANCIAS < @PROMEDIO AND @PLAZO<20 BEGIN
-RAISERROR ('NO ES POSIBLE OTORGAR EL CREDITO YA QUE NO SUPERA EL PROMEDIO DE GANANCIAS. SOLICITE PLAZO MENOR A 20 AÑOS',13,1)
+RAISERROR ('NO ES POSIBLE OTORGAR EL CREDITO YA QUE NO SUPERA EL PROMEDIO DE GANANCIAS. SOLICITE PLAZO MENOR A 20 AÃ‘OS',13,1)
 END
+
+INSERT INTO Creditos(ID, IDBanco,DNI,Fecha,Importe,Plazo,Cancelado)
+VALUES(@ID,@IDBANCO,@IDDNI,@FECHA,@Importe,@PLAZO,@CANCELADO)
 
 END
 GO
 
---4 Hacer un procedimiento almacenado que reciba dos fechas y liste todos los créditos otorgados entre
+--4 Hacer un procedimiento almacenado que reciba dos fechas y liste todos los crÃ©ditos otorgados entre
 -- esas fechas. Debe listar el apellido y nombre del solicitante,
--- el nombre del banco, el tipo de banco, la fecha del crédito y el importe solicitado.
+-- el nombre del banco, el tipo de banco, la fecha del crÃ©dito y el importe solicitado.
 
 
 CREATE PROCEDURE CreditoEntreFechas(
